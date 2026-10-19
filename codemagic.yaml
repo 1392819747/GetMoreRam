@@ -8,14 +8,22 @@ workflows:
     scripts:
       - name: Build (official flow, unsigned)
         script: |
-          xcodebuild clean build -scheme GetMoreRam -project GetMoreRam.xcodeproj             -sdk iphoneos -arch arm64 -configuration Release             CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO
+          set -e
+          xcodebuild clean build -scheme GetMoreRam -project GetMoreRam.xcodeproj             -sdk iphoneos -arch arm64 -configuration Release             -derivedDataPath Build             CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO
       - name: Package IPA (ad-hoc sign)
         script: |
+          set -e
           APP=Build/Build/Products/Release-iphoneos/GetMoreRam.app
+          if [ ! -d "$APP" ]; then
+            echo "FATAL: app not found at $APP"
+            find Build -name "*.app" -maxdepth 5 2>/dev/null || true
+            exit 1
+          fi
           codesign --force --sign - "$APP"
+          rm -rf Payload GetMoreRam.ipa
           mkdir -p Payload
           cp -R "$APP" Payload/
-          rm -f GetMoreRam.ipa
           zip -qry GetMoreRam.ipa Payload -x "._*" -x ".DS_Store"
+          ls -la GetMoreRam.ipa
     artifacts:
       - GetMoreRam.ipa
